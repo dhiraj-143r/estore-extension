@@ -1,66 +1,21 @@
-/**
- * ============================================================================
- * Health Canada Front-of-Package (FOP) Symbol Logic
- * ============================================================================
- *
- * WHAT THIS FILE DOES:
- * Computes Health Canada "High In" front-of-package warning symbols
- * based on nutritional data. Since January 2026, Canada requires foods
- * that exceed thresholds for saturated fat, sugars, or sodium to display
- * a warning symbol on the front of the package.
- *
- * THE REGULATION:
- * Health Canada's FOP nutrition symbol regulations (SOR/2022-168) require
- * a magnifying glass symbol with "High in / Élevé en" text when a product
- * exceeds 15% of the Daily Value (%DV) per reference amount:
- *   - Saturated fat: ≥ 2g per reference amount (or ≥ 5g per 100g simplified)
- *   - Sugars: ≥ 10g per reference amount (or ≥ 15g per 100g simplified)
- *   - Sodium: ≥ 345mg per reference amount (or ≥ 600mg per 100g simplified)
- *
- * SIMPLIFICATION:
- * The official thresholds use "per reference amount" which varies by food
- * category (e.g., 30g for crackers, 250mL for milk). Since OFF provides
- * universal per-100g data, we use per-100g thresholds as an approximation.
- * This is noted in the UI with a disclaimer.
- *
- * REFERENCE:
- * https://www.canada.ca/en/health-canada/services/food-nutrition/food-labelling/front-of-package.html
- * ============================================================================
- */
-
 import type { HealthCanadaWarnings, Nutriments } from '@/types';
 
-// ─── Thresholds ──────────────────────────────────────────────────────
-
 /**
- * Health Canada "High In" thresholds per 100g.
+ * Simplified per-100g thresholds derived from Health Canada's Front-of-Package
+ * Nutrition Symbol regulations (SOR/2022-168).
  *
- * These are simplified approximations of the official thresholds
- * (which use "per reference amount" varying by food category).
+ * Official thresholds use per-reference-amount values that vary by food category.
+ * We approximate with per-100g thresholds since OFF provides universal per-100g data.
  *
- * OFFICIAL (per reference amount):
- *   Saturated fat: ≥ 2g  (15% DV based on 13g Daily Value)
- *   Sugars:        ≥ 10g (15% DV based on 65g Daily Value)
- *   Sodium:        ≥ 345mg (15% DV based on 2300mg Daily Value)
- *
- * SIMPLIFIED (per 100g — what we use):
- *   Saturated fat: ≥ 5g per 100g
- *   Sugars:        ≥ 15g per 100g
- *   Sodium:        ≥ 600mg (0.6g) per 100g
+ * @see https://www.canada.ca/en/health-canada/services/food-nutrition/food-labelling/front-of-package.html
  */
 export const HC_THRESHOLDS = {
     saturatedFat: {
-        /** Grams per 100g */
         per100g: 5,
-        /** Grams per reference amount (official) */
         perRefAmount: 2,
-        /** Daily Value in grams */
         dailyValue: 13,
-        /** Warning label text (English) */
         labelEn: 'High in Saturated Fat',
-        /** Warning label text (French — for Quebec) */
         labelFr: 'Élevé en Gras saturés',
-        /** Nutriment field in OFF API */
         offField: 'saturated-fat_100g' as const,
     },
     sugars: {
@@ -72,9 +27,7 @@ export const HC_THRESHOLDS = {
         offField: 'sugars_100g' as const,
     },
     sodium: {
-        /** Grams per 100g (600mg = 0.6g) */
         per100g: 0.6,
-        /** Grams per reference amount (345mg = 0.345g) */
         perRefAmount: 0.345,
         dailyValue: 2.3,
         labelEn: 'High in Sodium',
@@ -83,21 +36,10 @@ export const HC_THRESHOLDS = {
     },
 } as const;
 
-// ─── Core Computation ────────────────────────────────────────────────
-
-/**
- * Compute Health Canada "High In" warnings from nutriment data.
- *
- * @param nutriments - Per-100g nutriment values from the OFF API
- * @returns Boolean flags for each "High In" warning
- */
+/** Evaluate "High In" warnings for a product based on its nutriment data. */
 export function computeWarnings(nutriments: Nutriments | undefined): HealthCanadaWarnings {
     if (!nutriments) {
-        return {
-            highInSaturatedFat: false,
-            highInSugars: false,
-            highInSodium: false,
-        };
+        return { highInSaturatedFat: false, highInSugars: false, highInSodium: false };
     }
 
     return {
@@ -107,12 +49,7 @@ export function computeWarnings(nutriments: Nutriments | undefined): HealthCanad
     };
 }
 
-/**
- * Count how many "High In" warnings a product triggers.
- *
- * @param warnings - Pre-computed warnings
- * @returns Number of active warnings (0-3)
- */
+/** Count active warnings (0–3). */
 export function countWarnings(warnings: HealthCanadaWarnings): number {
     let count = 0;
     if (warnings.highInSaturatedFat) count++;
@@ -121,13 +58,7 @@ export function countWarnings(warnings: HealthCanadaWarnings): number {
     return count;
 }
 
-/**
- * Get human-readable labels for active warnings.
- *
- * @param warnings - Pre-computed warnings
- * @param language - 'en' for English, 'fr' for French (Quebec)
- * @returns Array of label strings for active warnings
- */
+/** Return localized labels for all active warnings. */
 export function getWarningLabels(
     warnings: HealthCanadaWarnings,
     language: 'en' | 'fr' = 'en',
@@ -153,18 +84,7 @@ export function getWarningLabels(
     return labels;
 }
 
-// ─── %Daily Value Computation ────────────────────────────────────────
-
-/**
- * Compute the percentage of Daily Value (%DV) for each nutrient.
- *
- * This provides more context than just "High In" — users can see
- * exactly how much of their daily limit a product contributes.
- *
- * @param nutriments - Per-100g nutriment values
- * @param servingGrams - Serving size in grams (default: 100g)
- * @returns %DV for saturated fat, sugars, and sodium
- */
+/** Compute percent Daily Value for each tracked nutrient. */
 export function computePercentDailyValue(
     nutriments: Nutriments | undefined,
     servingGrams: number = 100,
@@ -173,7 +93,7 @@ export function computePercentDailyValue(
         return { saturatedFat: 0, sugars: 0, sodium: 0 };
     }
 
-    const scale = servingGrams / 100; // Adjust from per-100g to per-serving
+    const scale = servingGrams / 100;
 
     return {
         saturatedFat: Math.round(
@@ -188,22 +108,9 @@ export function computePercentDailyValue(
     };
 }
 
-// ─── Exemption Check ─────────────────────────────────────────────────
-
 /**
- * Check if a product is likely EXEMPT from FOP labelling.
- *
- * Health Canada exempts certain categories:
- *   - Raw single-ingredient meats, poultry, fish
- *   - Fresh fruits and vegetables (unprocessed)
- *   - Milk (unflavoured, unsweetened)
- *   - Eggs
- *   - Honey, maple syrup (single-ingredient sugars)
- *
- * We approximate this by checking OFF category tags.
- *
- * @param categoryTags - Product category tags from OFF
- * @returns true if the product is likely exempt
+ * Check whether a product is likely exempt from FOP labelling based on
+ * its OFF category tags (e.g., raw meats, fresh produce, eggs).
  */
 export function isLikelyExempt(categoryTags: string[] | undefined): boolean {
     if (!categoryTags || categoryTags.length === 0) return false;
@@ -227,24 +134,7 @@ export function isLikelyExempt(categoryTags: string[] | undefined): boolean {
     );
 }
 
-// ─── Severity Assessment ─────────────────────────────────────────────
-
-/**
- * Assess the overall health concern severity for a product.
- *
- * Combines the number of warnings with the magnitude of excess
- * to give a simple severity level:
- *   - "none"     = No warnings
- *   - "low"      = 1 warning, values barely above threshold
- *   - "moderate" = 1-2 warnings, or values significantly above
- *   - "high"     = 2-3 warnings, values well above thresholds
- *
- * Used for badge color-coding and sorting.
- *
- * @param nutriments - Per-100g nutriment values
- * @param warnings - Pre-computed warnings
- * @returns Severity level string
- */
+/** Assess overall severity based on warning count and threshold excess. */
 export function assessSeverity(
     nutriments: Nutriments | undefined,
     warnings: HealthCanadaWarnings,
@@ -253,19 +143,14 @@ export function assessSeverity(
 
     if (count === 0) return 'none';
     if (count >= 3) return 'high';
-
     if (!nutriments) return 'low';
 
-    // Check how far above thresholds
-    const satFatExcess = ((nutriments['saturated-fat_100g'] ?? 0) / HC_THRESHOLDS.saturatedFat.per100g);
-    const sugarsExcess = ((nutriments.sugars_100g ?? 0) / HC_THRESHOLDS.sugars.per100g);
-    const sodiumExcess = ((nutriments.sodium_100g ?? 0) / HC_THRESHOLDS.sodium.per100g);
-
+    const satFatExcess = (nutriments['saturated-fat_100g'] ?? 0) / HC_THRESHOLDS.saturatedFat.per100g;
+    const sugarsExcess = (nutriments.sugars_100g ?? 0) / HC_THRESHOLDS.sugars.per100g;
+    const sodiumExcess = (nutriments.sodium_100g ?? 0) / HC_THRESHOLDS.sodium.per100g;
     const maxExcess = Math.max(satFatExcess, sugarsExcess, sodiumExcess);
 
-    // More than 2x the threshold → high severity
     if (count >= 2 || maxExcess >= 2) return 'high';
-    // More than 1.5x → moderate
     if (maxExcess >= 1.5) return 'moderate';
 
     return 'low';

@@ -1,54 +1,9 @@
-/**
- * ============================================================================
- * Badge Renderer — Vanilla DOM Badge Creation for Content Scripts
- * ============================================================================
- *
- * WHAT THIS FILE DOES:
- * Creates styled HTML elements for nutrition badges that get injected into
- * grocery store pages. Uses vanilla DOM manipulation (no frameworks) because:
- *   - Content scripts run inside third-party pages
- *   - Vue/React would add overhead and could conflict with store's JS
- *   - Direct DOM creation is lighter and faster
- *
- * BADGE TYPES:
- *   🟢 Nutri-Score (A-E)     — Nutrition quality grade
- *   🔵 NOVA (1-4)            — Food processing level
- *   🌿 Eco-Score (A-F)       — Environmental impact
- *   ⚠️  Health Canada         — "High In" warning symbols
- *   ⏳ Loading                — Skeleton shimmer placeholder
- *   ❌ Not Found              — Product not in OFF database
- *
- * ASSET PATHS:
- * All SVG badges are in public/score/ and accessed via browser.runtime.getURL():
- *   - /score/nutriscore-{a-e}-new-en.svg
- *   - /score/nova-group-{1-4}.svg
- *   - /score/green-score-{a-f}.svg
- * ============================================================================
- */
-
 import type { BadgeData, NutriScoreGrade, NovaGroup, EcoScoreGrade, HealthCanadaWarnings, BadgeState } from '@/types';
 
-// ─── Constants ───────────────────────────────────────────────────────
-
-/** CSS class prefix for all badge elements (avoids collision with store CSS) */
 const PREFIX = 'estore';
-
-/** Data attribute used to mark cards that have badges */
 const BADGE_MARKER = 'data-estore-badge';
 
-// ─── Main Entry Point ────────────────────────────────────────────────
-
-/**
- * Create a complete badge container with all relevant badges.
- *
- * This is the main function called by the content script. It takes
- * the pre-computed BadgeData and returns a fully styled DOM element
- * ready to be appended to a product card.
- *
- * @param badgeData - Pre-computed data from toBadgeData()
- * @param confidence - Match confidence (0-1)
- * @returns A styled HTMLDivElement containing all badges
- */
+/** Create a complete badge container with score badges, warnings, and tooltip. */
 export function createBadgeContainer(
     badgeData: BadgeData,
     confidence: number,
@@ -57,21 +12,15 @@ export function createBadgeContainer(
     container.className = `${PREFIX}-badge-container`;
     container.setAttribute(BADGE_MARKER, 'true');
 
-    // ── Row 1: Score badges ──
     const scoreRow = document.createElement('div');
     scoreRow.className = `${PREFIX}-badge-row`;
 
-    // Nutri-Score
     if (badgeData.nutriScore !== 'unknown') {
         scoreRow.appendChild(createNutriscoreBadge(badgeData.nutriScore));
     }
-
-    // NOVA Group
     if (badgeData.novaGroup) {
         scoreRow.appendChild(createNovaBadge(badgeData.novaGroup));
     }
-
-    // Eco-Score
     if (badgeData.ecoScore !== 'unknown') {
         scoreRow.appendChild(createEcoScoreBadge(badgeData.ecoScore));
     }
@@ -80,14 +29,12 @@ export function createBadgeContainer(
         container.appendChild(scoreRow);
     }
 
-    // ── Row 2: Health Canada warnings ──
     if (badgeData.healthCanada.highInSaturatedFat ||
         badgeData.healthCanada.highInSugars ||
         badgeData.healthCanada.highInSodium) {
         container.appendChild(createHealthCanadaBadge(badgeData.healthCanada));
     }
 
-    // ── Row 3: Confidence / completeness warnings ──
     if (confidence > 0 && confidence < 0.5) {
         container.appendChild(createConfidenceIndicator(confidence));
     }
@@ -96,28 +43,16 @@ export function createBadgeContainer(
         container.appendChild(createCompletenessWarning(badgeData.completeness));
     }
 
-    // ── Click handler: open OFF product page ──
     container.addEventListener('click', (e) => {
         e.stopPropagation();
         e.preventDefault();
         window.open(badgeData.offUrl, '_blank');
     });
 
-    // ── Tooltip on hover ──
     container.appendChild(createTooltip(badgeData, confidence));
-
     return container;
 }
 
-// ─── Individual Badge Creators ───────────────────────────────────────
-
-/**
- * Create a Nutri-Score badge (A-E nutrition grade).
- *
- * Uses official Nutri-Score SVG images from public/score/:
- *   🟢 A = Excellent   🟢 B = Good   🟡 C = Average
- *   🟠 D = Poor        🔴 E = Bad
- */
 export function createNutriscoreBadge(grade: NutriScoreGrade): HTMLElement {
     const img = document.createElement('img');
     img.src = browser.runtime.getURL(`/score/nutriscore-${grade}-new-en.svg`);
@@ -128,12 +63,6 @@ export function createNutriscoreBadge(grade: NutriScoreGrade): HTMLElement {
     return img;
 }
 
-/**
- * Create a NOVA group badge (1-4 processing level).
- *
- *   1 = Unprocessed   2 = Culinary ingredients
- *   3 = Processed     4 = Ultra-processed
- */
 export function createNovaBadge(group: NovaGroup): HTMLElement {
     const img = document.createElement('img');
     img.src = browser.runtime.getURL(`/score/nova-group-${group}.svg`);
@@ -144,9 +73,6 @@ export function createNovaBadge(group: NovaGroup): HTMLElement {
     return img;
 }
 
-/**
- * Create an Eco-Score badge (environmental impact grade A-F).
- */
 export function createEcoScoreBadge(grade: EcoScoreGrade): HTMLElement {
     const img = document.createElement('img');
     img.src = browser.runtime.getURL(`/score/green-score-${grade}.svg`);
@@ -157,13 +83,6 @@ export function createEcoScoreBadge(grade: EcoScoreGrade): HTMLElement {
     return img;
 }
 
-/**
- * Create Health Canada "High In" warning badges.
- *
- * Since 2022, Canada requires front-of-package warning symbols on foods
- * high in saturated fat, sugars, or sodium. We render these as small
- * warning pills below the score badges.
- */
 export function createHealthCanadaBadge(warnings: HealthCanadaWarnings): HTMLElement {
     const row = document.createElement('div');
     row.className = `${PREFIX}-badge-row ${PREFIX}-hc-warnings`;
@@ -181,20 +100,11 @@ export function createHealthCanadaBadge(warnings: HealthCanadaWarnings): HTMLEle
     return row;
 }
 
-// ─── State Badges ────────────────────────────────────────────────────
-
-/**
- * Create a loading skeleton badge (shimmer placeholder).
- *
- * Displayed while the background worker is looking up a product.
- * Uses a CSS animation for a shimmer effect.
- */
 export function createLoadingBadge(): HTMLDivElement {
     const container = document.createElement('div');
     container.className = `${PREFIX}-badge-container ${PREFIX}-badge-loading`;
     container.setAttribute(BADGE_MARKER, 'loading');
 
-    // Three skeleton bars simulating score badges
     for (let i = 0; i < 3; i++) {
         const skeleton = document.createElement('div');
         skeleton.className = `${PREFIX}-skeleton`;
@@ -204,9 +114,6 @@ export function createLoadingBadge(): HTMLDivElement {
     return container;
 }
 
-/**
- * Create a "Not Found" badge for products not in the OFF database.
- */
 export function createNotFoundBadge(): HTMLDivElement {
     const container = document.createElement('div');
     container.className = `${PREFIX}-badge-container ${PREFIX}-badge-notfound`;
@@ -221,9 +128,6 @@ export function createNotFoundBadge(): HTMLDivElement {
     return container;
 }
 
-/**
- * Create an error badge for when lookup fails.
- */
 export function createErrorBadge(errorMessage?: string): HTMLDivElement {
     const container = document.createElement('div');
     container.className = `${PREFIX}-badge-container ${PREFIX}-badge-error`;
@@ -238,13 +142,6 @@ export function createErrorBadge(errorMessage?: string): HTMLDivElement {
     return container;
 }
 
-// ─── Helper Components ───────────────────────────────────────────────
-
-/**
- * Create a warning pill (used for Health Canada "High In" labels).
- *
- * Renders as: ⚠ Sat. Fat  or  ⚠ Sugars  or  ⚠ Sodium
- */
 function createWarningPill(label: string, tooltip: string): HTMLElement {
     const pill = document.createElement('span');
     pill.className = `${PREFIX}-hc-pill`;
@@ -253,11 +150,6 @@ function createWarningPill(label: string, tooltip: string): HTMLElement {
     return pill;
 }
 
-/**
- * Create a confidence indicator pill.
- *
- * Shown when match confidence is below 50% to warn the user.
- */
 export function createConfidenceIndicator(confidence: number): HTMLElement {
     const pill = document.createElement('span');
     pill.className = `${PREFIX}-confidence-pill`;
@@ -266,11 +158,6 @@ export function createConfidenceIndicator(confidence: number): HTMLElement {
     return pill;
 }
 
-/**
- * Create a data completeness warning.
- *
- * Shown when the OFF product data is less than 30% complete.
- */
 function createCompletenessWarning(completeness: number): HTMLElement {
     const pill = document.createElement('span');
     pill.className = `${PREFIX}-completeness-pill`;
@@ -279,34 +166,22 @@ function createCompletenessWarning(completeness: number): HTMLElement {
     return pill;
 }
 
-/**
- * Create a hover tooltip with detailed product info.
- *
- * Hidden by default, appears on container hover (via CSS).
- * Shows a breakdown of all scores and Health Canada warnings.
- */
 function createTooltip(badgeData: BadgeData, confidence: number): HTMLElement {
     const tooltip = document.createElement('div');
     tooltip.className = `${PREFIX}-tooltip`;
 
     const lines: string[] = [];
 
-    // Nutri-Score
     if (badgeData.nutriScore !== 'unknown') {
         lines.push(`Nutri-Score: <strong>${badgeData.nutriScore.toUpperCase()}</strong>`);
     }
-
-    // NOVA
     if (badgeData.novaGroup) {
         lines.push(`NOVA: <strong>Group ${badgeData.novaGroup}</strong> — ${getNovaLabel(badgeData.novaGroup)}`);
     }
-
-    // Eco-Score
     if (badgeData.ecoScore !== 'unknown') {
         lines.push(`Eco-Score: <strong>${badgeData.ecoScore.toUpperCase()}</strong>`);
     }
 
-    // Health Canada warnings
     const hcWarnings: string[] = [];
     if (badgeData.healthCanada.highInSaturatedFat) hcWarnings.push('Saturated Fat');
     if (badgeData.healthCanada.highInSugars) hcWarnings.push('Sugars');
@@ -315,23 +190,15 @@ function createTooltip(badgeData: BadgeData, confidence: number): HTMLElement {
         lines.push(`⚠️ High in: <strong>${hcWarnings.join(', ')}</strong>`);
     }
 
-    // Confidence
     if (confidence > 0 && confidence < 1) {
         lines.push(`Match: ${Math.round(confidence * 100)}%`);
     }
 
-    // Footer
     lines.push(`<em>Click to view on Open Food Facts →</em>`);
-
     tooltip.innerHTML = lines.join('<br>');
     return tooltip;
 }
 
-// ─── Utility Functions ───────────────────────────────────────────────
-
-/**
- * Get a human-readable label for a NOVA group number.
- */
 function getNovaLabel(group: NovaGroup): string {
     const labels: Record<NovaGroup, string> = {
         1: 'Unprocessed or minimally processed',
@@ -342,16 +209,7 @@ function getNovaLabel(group: NovaGroup): string {
     return labels[group];
 }
 
-/**
- * Update an existing badge container with new data.
- *
- * Used when a product is re-matched (e.g., after a text search fallback
- * returns a better result than the initial SKU lookup).
- *
- * @param existing - The existing badge container element
- * @param badgeData - New badge data to render
- * @param confidence - New confidence score
- */
+/** Replace an existing badge container with new data. */
 export function updateBadgeContainer(
     existing: HTMLElement,
     badgeData: BadgeData,
@@ -361,14 +219,7 @@ export function updateBadgeContainer(
     existing.replaceWith(newContainer);
 }
 
-/**
- * Transition a loading badge to a matched/not-found/error state.
- *
- * @param loadingElement - The loading badge container
- * @param state - New state
- * @param badgeData - Badge data (required if state is 'matched' or 'partial')
- * @param confidence - Match confidence
- */
+/** Transition a loading badge to a resolved state with a fade animation. */
 export function transitionBadge(
     loadingElement: HTMLElement,
     state: BadgeState,
@@ -393,7 +244,6 @@ export function transitionBadge(
             return;
     }
 
-    // Smooth transition: fade out loading, fade in new badge
     loadingElement.style.opacity = '0';
     setTimeout(() => {
         loadingElement.replaceWith(replacement);

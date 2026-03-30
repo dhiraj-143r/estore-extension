@@ -1,23 +1,3 @@
-/**
- * ============================================================================
- * SuperC Store Adapter
- * ============================================================================
- *
- * Scrapes product data from superc.ca
- * SuperC is owned by Métro Inc. — shares most DOM patterns with Metro.
- *
- * WHY NOT JUST REUSE METRO DIRECTLY?
- * The old code delegated all methods to metroAdapter, but those methods
- * referenced metroConfig.selectors internally (via closure). If SuperC
- * ever diverges from Metro's DOM structure, those delegated methods
- * would silently use the WRONG selectors.
- *
- * Instead, this adapter has its OWN implementation that references
- * supercConfig.selectors. The logic is identical to Metro, but it
- * uses the correct config. The shared helpers (from helpers.ts) avoid
- * actual code duplication.
- * ============================================================================
- */
 import type {
     StoreAdapter,
     StoreConfig,
@@ -33,19 +13,8 @@ import {
     createContentObserver,
 } from './helpers';
 
-// ─── Constants ───────────────────────────────────────────────────────
-
 const BADGE_MARKER = 'data-estore-badge';
 
-// ─── Store Configuration ─────────────────────────────────────────────
-
-/**
- * SuperC's CSS selectors.
- *
- * Currently identical to Metro (same parent company, same frontend).
- * Having them separate means we can update SuperC independently
- * if their site ever diverges from Metro's layout.
- */
 export const supercConfig: StoreConfig = {
     name: 'SuperC',
     slug: 'superc',
@@ -66,16 +35,9 @@ export const supercConfig: StoreConfig = {
     },
 };
 
-// ─── Adapter Implementation ──────────────────────────────────────────
-
 export const supercAdapter: StoreAdapter = {
     config: supercConfig,
 
-    // ── Page Type Detection ────────────────────────────────────────
-
-    /**
-     * SuperC uses the same URL patterns as Metro (same parent company).
-     */
     detectPageType(url: string, _document: Document): PageType {
         if (/\/search\?/.test(url)) return 'search';
         if (/\/p\//.test(url) || /\/product\//.test(url)) return 'detail';
@@ -83,8 +45,6 @@ export const supercAdapter: StoreAdapter = {
         if (/\/flyer/.test(url) || /\/circulaire/.test(url)) return 'flyer';
         return 'listing';
     },
-
-    // ── Product Scraping ───────────────────────────────────────────
 
     scrapeProducts(root: Element): ScrapedProductData[] {
         const cards = root.querySelectorAll(supercConfig.selectors.productCard);
@@ -112,24 +72,13 @@ export const supercAdapter: StoreAdapter = {
         });
     },
 
-    // ── Identifier Extraction ──────────────────────────────────────
-
-    /**
-     * Same multi-strategy approach as Metro:
-     *   1. JSON-LD structured data
-     *   2. Meta tags
-     *   3. data-product-code attribute
-     */
     extractIdentifier(card: Element): ProductIdentifier | null {
-        // Strategy 1: JSON-LD
         const jsonLd = extractJsonLdBarcode(card.ownerDocument);
         if (jsonLd) return jsonLd;
 
-        // Strategy 2: Meta tags
         const meta = extractMetaBarcode(card.ownerDocument);
         if (meta) return meta;
 
-        // Strategy 3: data-product-code
         const el = card.closest('[data-product-code]')
             ?? card.querySelector('[data-product-code]');
         const code = el?.getAttribute('data-product-code');
@@ -144,14 +93,10 @@ export const supercAdapter: StoreAdapter = {
         return null;
     },
 
-    // ── Name Extraction ────────────────────────────────────────────
-
     extractProductName(card: Element): string {
         return card.querySelector(supercConfig.selectors.productName)
             ?.textContent?.trim() ?? '';
     },
-
-    // ── Badge Injection ────────────────────────────────────────────
 
     getInjectionPoint(card: Element): Element | null {
         return card.querySelector(supercConfig.selectors.badgeInjectionPoint);
@@ -160,8 +105,6 @@ export const supercAdapter: StoreAdapter = {
     hasBadges(card: Element): boolean {
         return card.hasAttribute(BADGE_MARKER);
     },
-
-    // ── Dynamic Content Observers ──────────────────────────────────
 
     observeDynamicContent(callback: () => void): MutationObserver {
         return createContentObserver(

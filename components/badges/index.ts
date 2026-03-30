@@ -1,9 +1,3 @@
-/**
- * Badge Components — Re-exports
- *
- * Central export point for all badge rendering functions.
- * Content scripts import from here to create badge DOM elements.
- */
 export {
     createBadgeContainer,
     createNutriscoreBadge,

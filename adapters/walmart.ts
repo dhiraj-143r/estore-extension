@@ -1,26 +1,3 @@
-/**
- * ============================================================================
- * Walmart Canada Store Adapter
- * ============================================================================
- *
- * Scrapes product data from walmart.ca
- * Walmart's site is a full SPA (React-based) with very different DOM
- * patterns from Metro/SuperC.
- *
- * IDENTIFIER EXTRACTION STRATEGY (in priority order):
- *   1. JSON-LD structured data — Walmart uses schema.org extensively for SEO
- *   2. Meta tags — <meta itemprop="gtin13"> on detail pages
- *   3. Hidden UPC spans — Some detail pages have UPC in hidden <span> elements
- *   4. data-product-id / data-item-id — Walmart's internal product identifiers
- *   5. URL-based extraction — /ip/product-name/ITEMID patterns
- *
- * KEY OBSERVATIONS FROM NUTRIBANNER:
- *   - UPC sometimes available in hidden spans on DETAIL pages only
- *   - Listing pages rarely have UPCs — only internal IDs
- *   - SPA navigation requires pushState interception (no page reloads)
- *   - Walmart's React rendering means DOM can change after initial load
- * ============================================================================
- */
 import type {
     StoreAdapter,
     StoreConfig,
@@ -36,20 +13,8 @@ import {
     createContentObserver,
 } from './helpers';
 
-// ─── Constants ───────────────────────────────────────────────────────
-
 const BADGE_MARKER = 'data-estore-badge';
 
-// ─── Store Configuration ─────────────────────────────────────────────
-
-/**
- * Walmart Canada's CSS selectors.
- *
- * NOTE: Walmart.ca uses data-automation attributes extensively for
- * testing, which makes them relatively stable for our scraping.
- * However, they ARE a React SPA — elements may not exist on initial
- * DOM load and could render asynchronously.
- */
 export const walmartConfig: StoreConfig = {
     name: 'Walmart',
     slug: 'walmart',
@@ -69,21 +34,9 @@ export const walmartConfig: StoreConfig = {
     },
 };
 
-// ─── Adapter Implementation ──────────────────────────────────────────
-
 export const walmartAdapter: StoreAdapter = {
     config: walmartConfig,
 
-    // ── Page Type Detection ────────────────────────────────────────
-
-    /**
-     * Walmart's URL patterns:
-     *   - Search:  /search?q=nutella
-     *   - Detail:  /ip/nutella-750g/12345678  (note: /ip/ = "item page")
-     *   - Cart:    /cart
-     *   - Flyer:   /flyer
-     *   - Listing: /browse/category-name/12345 or homepage
-     */
     detectPageType(url: string, _document: Document): PageType {
         if (/\/search\?/.test(url)) return 'search';
         if (/\/ip\//.test(url) || /\/product\//.test(url)) return 'detail';
@@ -92,13 +45,10 @@ export const walmartAdapter: StoreAdapter = {
         return 'listing';
     },
 
-    // ── Product Scraping ───────────────────────────────────────────
-
     scrapeProducts(root: Element): ScrapedProductData[] {
         const cards = root.querySelectorAll(walmartConfig.selectors.productCard);
 
         return Array.from(cards).map((card) => {
-            // Walmart product links follow the /ip/product-name/ID pattern
             const detailLink = card.querySelector('a[href*="/ip/"]')
                 ?? card.querySelector('a[data-automation="product-title"]')
                 ?? card.closest('a[href*="/ip/"]');
@@ -121,34 +71,28 @@ export const walmartAdapter: StoreAdapter = {
         });
     },
 
-    // ── Identifier Extraction ──────────────────────────────────────
-
     /**
-     * Walmart uses a multi-layered strategy for barcode discovery.
+     * Multi-strategy identifier extraction:
+     * JSON-LD → meta tags → hidden UPC spans → data-item-id → URL-based item ID.
      */
     extractIdentifier(card: Element): ProductIdentifier | null {
-        // Strategy 1: JSON-LD
         const jsonLd = extractJsonLdBarcode(card.ownerDocument);
         if (jsonLd) return jsonLd;
 
-        // Strategy 2: Meta tags
         const meta = extractMetaBarcode(card.ownerDocument);
         if (meta) return meta;
 
-        // Strategy 3: Hidden UPC spans
         const upcSpan = card.ownerDocument.querySelector(walmartConfig.selectors.productIdentifier ?? '');
         const upcText = upcSpan?.textContent?.trim();
         if (upcText && isValidBarcode(upcText)) {
             return { type: 'barcode', value: upcText, confidence: 0.95 };
         }
 
-        // Strategy 4: data-item-id attribute wrapper
         const itemId = card.getAttribute('data-item-id');
         if (itemId) {
             return { type: 'sku', value: itemId, confidence: 0.4 };
         }
-        
-        // Strategy 5: URL-based item ID
+
         const link = card.querySelector('a[href*="/ip/"]');
         const href = link?.getAttribute('href') ?? '';
         if (href) {
@@ -161,23 +105,18 @@ export const walmartAdapter: StoreAdapter = {
         return null;
     },
 
-    // ── Name Extraction ────────────────────────────────────────────
-
     extractProductName(card: Element): string {
-        // Find the title span directly using the configured selector
         const titleSpan = card.querySelector(walmartConfig.selectors.productName);
         if (titleSpan?.textContent) {
             return titleSpan.textContent.trim();
         }
 
-        // Fallback: Walmart often puts the title in a span inside an element with data-automation-id="product-title"
         const titleContainer = card.querySelector('[data-automation-id="product-title"]');
         if (titleContainer) {
-            // Get the first span with actual text context
             const spans = Array.from(titleContainer.querySelectorAll('span'));
             for (const span of spans) {
                 const text = span.textContent?.trim();
-                if (text && text.length > 5) { // Ensure it's not a tiny formatting span
+                if (text && text.length > 5) {
                     return text;
                 }
             }
@@ -189,8 +128,6 @@ export const walmartAdapter: StoreAdapter = {
         return '';
     },
 
-    // ── Badge Injection ────────────────────────────────────────────
-
     getInjectionPoint(card: Element): Element | null {
         return card.querySelector(walmartConfig.selectors.badgeInjectionPoint);
     },
@@ -199,12 +136,6 @@ export const walmartAdapter: StoreAdapter = {
         return card.hasAttribute(BADGE_MARKER);
     },
 
-    // ── Dynamic Content Observers ──────────────────────────────────
-
-    /**
-     * Walmart is a React SPA — content is VERY dynamic.
-     * Products can appear/disappear as React re-renders the virtual DOM.
-     */
     observeDynamicContent(callback: () => void): MutationObserver {
         return createContentObserver(
             walmartConfig.selectors.productListContainer ?? 'body',
@@ -212,10 +143,6 @@ export const walmartAdapter: StoreAdapter = {
         );
     },
 
-    /**
-     * Walmart's SPA navigation — uses pushState for all page transitions.
-     * This replaces Nutribanner's problematic `window.location.reload()` hack.
-     */
     observeNavigation(callback: (newUrl: string) => void): () => void {
         return createNavigationObserver(callback);
     },

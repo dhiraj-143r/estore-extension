@@ -1,21 +1,5 @@
-/**
- * ============================================================================
- * E-Store Badge Styles
- * ============================================================================
- *
- * Styles for nutrition badges injected into grocery store pages.
- *
- * ALL selectors use the "estore-" prefix to avoid collision with
- * the store's own CSS. This is critical — we're injecting our styles
- * into metro.ca, walmart.ca, etc. which have their own stylesheets.
- *
- * INJECTION:
- * WXT automatically injects this CSS into matching pages when
- * imported by the content script via: import './badges.css';
- * ============================================================================
- */
-
-/* ─── Badge Container ─────────────────────────────────────────────── */
+/* Badge styles injected into grocery store pages.
+   All selectors use the "estore-" prefix to avoid CSS collisions. */
 
 .estore-badge-container {
     display: flex;
@@ -31,16 +15,12 @@
     z-index: 100;
 }
 
-/* ─── Score Badge Row ─────────────────────────────────────────────── */
-
 .estore-badge-row {
     display: flex;
     flex-wrap: wrap;
     gap: 4px;
     align-items: center;
 }
-
-/* ─── Individual Score Badges (SVG images) ─────────────────────────── */
 
 .estore-badge {
     height: 28px;
@@ -62,25 +42,17 @@
     transform: scale(0.95);
 }
 
-/* ─── Nutri-Score specific ────────────────────────────────────────── */
-
 .estore-badge-nutriscore {
     height: 30px;
 }
-
-/* ─── NOVA specific ───────────────────────────────────────────────── */
 
 .estore-badge-nova {
     height: 28px;
 }
 
-/* ─── Eco-Score specific ──────────────────────────────────────────── */
-
 .estore-badge-ecoscore {
     height: 28px;
 }
-
-/* ─── Health Canada Warning Pills ─────────────────────────────────── */
 
 .estore-hc-warnings {
     gap: 3px;
@@ -102,8 +74,6 @@
     user-select: none;
     -webkit-user-select: none;
 }
-
-/* ─── Confidence & Completeness Pills ─────────────────────────────── */
 
 .estore-confidence-pill {
     display: inline-flex;
@@ -133,8 +103,6 @@
     white-space: nowrap;
 }
 
-/* ─── Loading Skeleton ────────────────────────────────────────────── */
-
 .estore-badge-loading {
     flex-direction: row;
     gap: 4px;
@@ -163,8 +131,6 @@
     }
 }
 
-/* ─── Not Found Badge ─────────────────────────────────────────────── */
-
 .estore-badge-notfound {
     padding: 3px 0;
 }
@@ -182,8 +148,6 @@
     cursor: default;
 }
 
-/* ─── Error Badge ─────────────────────────────────────────────────── */
-
 .estore-badge-error {
     padding: 3px 0;
 }
@@ -200,8 +164,6 @@
     border: 1px solid #fecaca;
     cursor: default;
 }
-
-/* ─── Tooltip ─────────────────────────────────────────────────────── */
 
 .estore-tooltip {
     display: none;
@@ -224,12 +186,10 @@
     word-wrap: break-word;
 }
 
-/* Show tooltip on container hover */
 .estore-badge-container:hover .estore-tooltip {
     display: block;
 }
 
-/* Tooltip arrow */
 .estore-tooltip::after {
     content: '';
     position: absolute;
@@ -239,7 +199,6 @@
     border-top-color: #1f2937;
 }
 
-/* Tooltip typography */
 .estore-tooltip strong {
     font-weight: 700;
     color: #ffffff;
@@ -250,8 +209,6 @@
     color: #9ca3af;
     font-size: 10px;
 }
-
-/* ─── Dark Mode Support ───────────────────────────────────────────── */
 
 @media (prefers-color-scheme: dark) {
     .estore-hc-pill {

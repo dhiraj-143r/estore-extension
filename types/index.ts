@@ -1,4 +1,3 @@
-// Store adapter types
 export type {
     PageType,
     IdentifierType,
@@ -10,7 +9,6 @@ export type {
     StoreAdapter,
 } from './store-adapter';
 
-// OFF API types
 export type {
     Nutriments,
     NutriScoreGrade,

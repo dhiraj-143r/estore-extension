@@ -1,15 +1,4 @@
 <script lang="ts" setup>
-/**
- * E-Store Popup — Main Application Component
- *
- * This is the popup UI that appears when the user clicks the extension icon.
- * It provides controls for:
- *   - Global extension on/off toggle
- *   - Per-store enable/disable toggles (Metro, SuperC, Walmart)
- *   - Badge visibility preferences (Nutri-Score, NOVA, Eco-Score, Health Canada)
- *   - Settings (language, badge size, confidence threshold)
- */
-
 import { ref, onMounted, watch } from 'vue';
 import {
   loadSettings,
@@ -18,19 +7,15 @@ import {
 } from '@/utils/storage';
 import { sendToBackground } from '@/types/messages';
 
-// ─── Reactive State ────────────────────────────────────────────────
-
 const settings = ref<ExtensionSettings | null>(null);
 const loading = ref(true);
 
-// ── Store definitions for the UI ──
 const stores = [
   { slug: 'metro',   name: 'Metro',   domain: 'metro.ca',   color: '#E31837', letter: 'M' },
   { slug: 'superc',  name: 'SuperC',  domain: 'superc.ca',  color: '#FF6600', letter: 'S' },
   { slug: 'walmart', name: 'Walmart', domain: 'walmart.ca', color: '#0071DC', letter: 'W' },
 ];
 
-// ── Badge type definitions ──
 const badgeTypes = [
   { key: 'showNutriScore',    label: 'Nutri-Score',        icon: '🟢', desc: 'Nutrition grade A-E' },
   { key: 'showNova',          label: 'NOVA Group',         icon: '🔵', desc: 'Processing level 1-4' },
@@ -38,34 +23,28 @@ const badgeTypes = [
   { key: 'showHealthCanada',  label: 'Health Canada',      icon: '⚠️', desc: '"High In" warnings' },
 ] as const;
 
-// ─── Lifecycle ─────────────────────────────────────────────────────
-
 onMounted(async () => {
   try {
     settings.value = await loadSettings();
   } catch (e) {
-    console.error('[E-Store Popup] Failed to load settings:', e);
+    console.error('[E-Store] Failed to load settings:', e);
   } finally {
     loading.value = false;
   }
 });
 
-// Auto-save whenever settings change
 watch(settings, async (newSettings) => {
   if (!newSettings) return;
   try {
     await saveSettings(newSettings);
-    // Broadcast to content scripts
     sendToBackground({
       type: 'SETTINGS_CHANGED',
       settings: newSettings,
-    }).catch(() => { /* Background might not be ready */ });
+    }).catch(() => {});
   } catch (e) {
-    console.error('[E-Store Popup] Failed to save settings:', e);
+    console.error('[E-Store] Failed to save settings:', e);
   }
 }, { deep: true });
-
-// ─── Helpers ───────────────────────────────────────────────────────
 
 function isStoreEnabled(slug: string): boolean {
   return settings.value?.stores[slug]?.enabled ?? true;
@@ -93,13 +72,11 @@ const version = browser.runtime.getManifest().version ?? '1.0.0';
 </script>
 
 <template>
-  <!-- Loading state -->
   <div v-if="loading" style="padding: 40px; text-align: center; color: #6b7280;">
     Loading...
   </div>
 
   <div v-else-if="settings" class="fade-in">
-    <!-- ── Header ─────────────────────────────────────────────── -->
     <header class="popup-header">
       <div class="header-brand">
         <div class="header-logo">E</div>
@@ -114,10 +91,7 @@ const version = browser.runtime.getManifest().version ?? '1.0.0';
       </label>
     </header>
 
-    <!-- Content (disabled when extension is off) -->
     <div :class="{ 'disabled-overlay': !settings.enabled }">
-
-      <!-- ── Store Toggles ──────────────────────────────────────── -->
       <section class="popup-section">
         <div class="section-title">Stores</div>
         <div
@@ -147,7 +121,6 @@ const version = browser.runtime.getManifest().version ?? '1.0.0';
         </div>
       </section>
 
-      <!-- ── Badge Preferences ──────────────────────────────────── -->
       <section class="popup-section">
         <div class="section-title">Badge Types</div>
         <div
@@ -170,11 +143,9 @@ const version = browser.runtime.getManifest().version ?? '1.0.0';
         </div>
       </section>
 
-      <!-- ── Settings ───────────────────────────────────────────── -->
       <section class="popup-section">
         <div class="section-title">Settings</div>
 
-        <!-- Language -->
         <div class="setting-row">
           <span class="setting-label">Language</span>
           <div class="setting-control">
@@ -185,7 +156,6 @@ const version = browser.runtime.getManifest().version ?? '1.0.0';
           </div>
         </div>
 
-        <!-- Badge Size -->
         <div class="setting-row">
           <span class="setting-label">Badge Size</span>
           <div class="setting-control">
@@ -197,7 +167,6 @@ const version = browser.runtime.getManifest().version ?? '1.0.0';
           </div>
         </div>
 
-        <!-- Minimum Confidence -->
         <div class="slider-row">
           <div class="slider-header">
             <span class="slider-label">Min. Confidence</span>
@@ -215,7 +184,6 @@ const version = browser.runtime.getManifest().version ?? '1.0.0';
       </section>
     </div>
 
-    <!-- ── Footer ───────────────────────────────────────────────── -->
     <footer class="popup-footer">
       <a
         class="footer-link"
