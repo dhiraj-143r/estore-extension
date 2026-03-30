@@ -1,0 +1,292 @@
+/**
+ * ============================================================================
+ * E-Store Badge Styles
+ * ============================================================================
+ *
+ * Styles for nutrition badges injected into grocery store pages.
+ *
+ * ALL selectors use the "estore-" prefix to avoid collision with
+ * the store's own CSS. This is critical — we're injecting our styles
+ * into metro.ca, walmart.ca, etc. which have their own stylesheets.
+ *
+ * INJECTION:
+ * WXT automatically injects this CSS into matching pages when
+ * imported by the content script via: import './badges.css';
+ * ============================================================================
+ */
+
+/* ─── Badge Container ─────────────────────────────────────────────── */
+
+.estore-badge-container {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 6px 0;
+    position: relative;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-size: 12px;
+    line-height: 1.4;
+    box-sizing: border-box;
+    transition: opacity 0.2s ease;
+    z-index: 100;
+}
+
+/* ─── Score Badge Row ─────────────────────────────────────────────── */
+
+.estore-badge-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+}
+
+/* ─── Individual Score Badges (SVG images) ─────────────────────────── */
+
+.estore-badge {
+    height: 28px;
+    width: auto;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    vertical-align: middle;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.estore-badge:hover {
+    transform: scale(1.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.estore-badge:active {
+    transform: scale(0.95);
+}
+
+/* ─── Nutri-Score specific ────────────────────────────────────────── */
+
+.estore-badge-nutriscore {
+    height: 30px;
+}
+
+/* ─── NOVA specific ───────────────────────────────────────────────── */
+
+.estore-badge-nova {
+    height: 28px;
+}
+
+/* ─── Eco-Score specific ──────────────────────────────────────────── */
+
+.estore-badge-ecoscore {
+    height: 28px;
+}
+
+/* ─── Health Canada Warning Pills ─────────────────────────────────── */
+
+.estore-hc-warnings {
+    gap: 3px;
+}
+
+.estore-hc-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 600;
+    color: #b91c1c;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    cursor: default;
+    white-space: nowrap;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* ─── Confidence & Completeness Pills ─────────────────────────────── */
+
+.estore-confidence-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 500;
+    color: #92400e;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    cursor: default;
+    white-space: nowrap;
+}
+
+.estore-completeness-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 500;
+    color: #6b7280;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    cursor: default;
+    white-space: nowrap;
+}
+
+/* ─── Loading Skeleton ────────────────────────────────────────────── */
+
+.estore-badge-loading {
+    flex-direction: row;
+    gap: 4px;
+}
+
+.estore-skeleton {
+    width: 60px;
+    height: 28px;
+    border-radius: 4px;
+    background: linear-gradient(
+        90deg,
+        #e5e7eb 25%,
+        #f3f4f6 37%,
+        #e5e7eb 63%
+    );
+    background-size: 200% 100%;
+    animation: estore-shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes estore-shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+/* ─── Not Found Badge ─────────────────────────────────────────────── */
+
+.estore-badge-notfound {
+    padding: 3px 0;
+}
+
+.estore-notfound-label {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 500;
+    color: #6b7280;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    cursor: default;
+}
+
+/* ─── Error Badge ─────────────────────────────────────────────────── */
+
+.estore-badge-error {
+    padding: 3px 0;
+}
+
+.estore-error-label {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 500;
+    color: #dc2626;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    cursor: default;
+}
+
+/* ─── Tooltip ─────────────────────────────────────────────────────── */
+
+.estore-tooltip {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 0;
+    min-width: 200px;
+    max-width: 280px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 11px;
+    line-height: 1.5;
+    color: #f9fafb;
+    background: #1f2937;
+    border: 1px solid #374151;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    z-index: 10000;
+    pointer-events: none;
+    white-space: normal;
+    word-wrap: break-word;
+}
+
+/* Show tooltip on container hover */
+.estore-badge-container:hover .estore-tooltip {
+    display: block;
+}
+
+/* Tooltip arrow */
+.estore-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 16px;
+    border: 5px solid transparent;
+    border-top-color: #1f2937;
+}
+
+/* Tooltip typography */
+.estore-tooltip strong {
+    font-weight: 700;
+    color: #ffffff;
+}
+
+.estore-tooltip em {
+    font-style: italic;
+    color: #9ca3af;
+    font-size: 10px;
+}
+
+/* ─── Dark Mode Support ───────────────────────────────────────────── */
+
+@media (prefers-color-scheme: dark) {
+    .estore-hc-pill {
+        color: #fca5a5;
+        background: rgba(127, 29, 29, 0.3);
+        border-color: rgba(220, 38, 38, 0.3);
+    }
+
+    .estore-confidence-pill {
+        color: #fcd34d;
+        background: rgba(120, 53, 15, 0.3);
+        border-color: rgba(217, 119, 6, 0.3);
+    }
+
+    .estore-completeness-pill,
+    .estore-notfound-label {
+        color: #9ca3af;
+        background: rgba(55, 65, 81, 0.4);
+        border-color: rgba(75, 85, 99, 0.4);
+    }
+
+    .estore-error-label {
+        color: #fca5a5;
+        background: rgba(127, 29, 29, 0.3);
+        border-color: rgba(220, 38, 38, 0.3);
+    }
+
+    .estore-skeleton {
+        background: linear-gradient(
+            90deg,
+            #374151 25%,
+            #4b5563 37%,
+            #374151 63%
+        );
+        background-size: 200% 100%;
+        animation: estore-shimmer 1.5s ease-in-out infinite;
+    }
+}
